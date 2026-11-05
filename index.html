@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Curling.Path — Тренажёр дорожек</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #e5e7eb; font-family: system-ui, -apple-system, sans-serif;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    display: flex; flex-direction: column;
+  }
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 8px; background: #e5e7eb;
+    border-bottom: 1px solid #d1d5db; flex-shrink: 0; gap: 6px;
+    position: relative;
+  }
+  .top-left { display: flex; gap: 5px; align-items: center; }
+  #header {
+    color: #1f2937; font-size: 13px; font-weight: 800;
+    letter-spacing: 1px; white-space: nowrap;
+    position: absolute; left: 50%; transform: translateX(-50%);
+  }
+  #header span { color: #2563eb; }
+
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #2563eb; color: white; font-size: 16px;
+    font-weight: bold; border: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    transition: all 0.15s ease; line-height: 1; flex-shrink: 0;
+  }
+  .icon-btn:active { transform: scale(0.92); }
+  .icon-btn.refresh { background: #f59e0b; }
+
+  .slider-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: #e5e7eb; flex-shrink: 0;
+  }
+  #brushSlider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 8px; border-radius: 4px; background: #d1d5db;
+    outline: none; cursor: pointer;
+  }
+  #brushSlider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #f97316; cursor: pointer;
+    border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  #brushSlider::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #f97316; cursor: pointer;
+    border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .modal {
+    display: none; position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);
+    align-items: center; justify-content: center; z-index: 1000;
+    backdrop-filter: blur(3px); padding: 16px;
+  }
+  .modal.show { display: flex; }
+  .modal-card {
+    background: #fffef7; max-width: 90%; width: 360px;
+    padding: 22px 20px; border-radius: 24px;
+    box-shadow: 0 20px 35px rgba(0,0,0,0.3);
+    border: 1px solid rgba(37,99,235,0.3);
+    max-height: 85vh; overflow-y: auto;
+    text-align: center;
+  }
+  .modal-card .verdict {
+    font-size: 1.3rem; font-weight: 800; margin-bottom: 14px;
+    display: block;
+  }
+  .modal-card .verdict.correct { color: #059669; }
+  .modal-card .verdict.wrong { color: #dc2626; }
+  .modal-card .errors {
+    font-size: 0.9rem; line-height: 1.5; color: #991b1b;
+    margin-bottom: 12px; text-align: left;
+    background: #fee2e2; padding: 10px; border-radius: 10px;
+  }
+  .modal-card .answer-block {
+    background: #f1f5f9; border-radius: 14px;
+    padding: 14px; margin-top: 6px;
+    text-align: left; border: 1px solid #cbd5e1;
+  }
+  .modal-card .answer-block .title {
+    font-weight: 800; margin-bottom: 8px; color: #2563eb;
+    font-size: 1rem; text-align: center;
+  }
+  .modal-card .answer-block .row {
+    font-weight: 600; font-size: 0.92rem; color: #1f2937;
+    margin-bottom: 4px; display: flex; justify-content: space-between;
+    border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px;
+  }
+  .modal-card .answer-block .row:last-child { border-bottom: none; margin-bottom: 0; }
+  .modal-card .answer-block .row strong { color: #b91c1c; }
+  .modal-card .answer-block .row .label { color: #475569; }
+
+  .close-modal-btn {
+    margin-top: 16px; background: #2563eb; color: white;
+    border: none; padding: 12px 20px; border-radius: 40px;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    width: 100%; transition: 0.15s;
+  }
+  .close-modal-btn:active { background: #1e40af; transform: scale(0.97); }
+
+  #gameWrapper {
+    width: 100%; flex: 1; display: flex;
+    justify-content: center; align-items: center;
+    overflow: hidden; min-height: 0;
+  }
+  canvas { display: block; background: #ffffff; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+
+  #controls {
+    display: flex; justify-content: center; align-items: center;
+    gap: 6px; padding: 4px 8px; background: #e5e7eb; flex-shrink: 0;
+  }
+  .throw-info {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: #374151; font-weight: 600;
+  }
+  .throw-count {
+    background: #2563eb; color: white; border-radius: 50%;
+    width: 22px; height: 22px; display: inline-flex;
+    align-items: center; justify-content: center; font-weight: 700; font-size: 11px;
+  }
+  .rotation-btn {
+    padding: 5px 10px; border-radius: 6px; border: 2px solid #2563eb;
+    background: white; color: #2563eb; font-weight: 700; font-size: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .rotation-btn.active { background: #2563eb; color: white; }
+  .rotation-btn:active { transform: scale(0.95); }
+  .throw-btn {
+    padding: 5px 14px; border-radius: 6px; border: none;
+    background: #059669; color: white; font-weight: 700; font-size: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .throw-btn:active { transform: scale(0.95); background: #047857; }
+  .throw-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  .answer-panel {
+    background: #f9fafb; border-top: 2px solid #d1d5db;
+    padding: 5px 8px; flex-shrink: 0;
+  }
+  .answer-panel h4 {
+    font-size: 11px; color: #1f2937; margin-bottom: 4px;
+    text-align: center; font-weight: 700;
+  }
+  .path-types {
+    display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; margin-bottom: 5px;
+  }
+  .path-btn {
+    padding: 4px 7px; border-radius: 5px; border: 2px solid #9ca3af;
+    background: white; color: #374151; font-size: 10px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .path-btn.active { border-color: #2563eb; background: #dbeafe; color: #1e40af; }
+  .path-btn:active { transform: scale(0.95); }
+
+  .slidings-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+    max-width: 360px; margin: 0 auto 5px;
+  }
+  .sliding-input {
+    display: flex; align-items: center; gap: 2px;
+    font-size: 9px; color: #374151; font-weight: 600;
+  }
+  .sliding-input label { flex: 1; white-space: nowrap; }
+  .sliding-input input {
+    width: 38px; padding: 3px 2px; border: 1px solid #d1d5db;
+    border-radius: 4px; font-size: 11px; text-align: center;
+    font-weight: 700; color: #1f2937;
+  }
+  .sliding-input input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+
+  .check-btn {
+    display: block; margin: 0 auto; padding: 5px 22px;
+    border-radius: 6px; border: none; background: #2563eb;
+    color: white; font-weight: 700; font-size: 12px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .check-btn:active { transform: scale(0.96); background: #1e40af; }
+
+  #info {
+    text-align: center; color: #6b7280; font-size: 9px;
+    padding: 2px; background: #e5e7eb; flex-shrink: 0;
+    height: 0; overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-left">
+    <button class="icon-btn refresh" id="refreshBtn" title="Новая дорожка">⟳</button>
+  </div>
+  <div id="header">CURLING<span>.</span>PATH</div>
+</div>
+
+<div class="slider-row">
+  <input type="range" id="brushSlider" min="-12" max="12" step="1" value="0">
+</div>
+
+<div id="resultModal" class="modal">
+  <div class="modal-card">
+    <span class="verdict" id="modalVerdict"></span>
+    <div class="errors" id="modalErrors" style="display:none;"></div>
+    <div class="answer-block">
+      <div class="title">📖 Правильный ответ</div>
+      <div class="row"><span class="label">Тип дорожки:</span> <strong id="ansType"></strong></div>
+      <div class="row"><span class="label">In снаружи:</span> <strong id="ansInOutside"></strong> футов</div>
+      <div class="row"><span class="label">Out снаружи:</span> <strong id="ansOutOutside"></strong> футов</div>
+      <div class="row"><span class="label">In изнутри:</span> <strong id="ansInInside"></strong> футов</div>
+      <div class="row"><span class="label">Out изнутри:</span> <strong id="ansOutInside"></strong> футов</div>
+    </div>
+    <button class="close-modal-btn" id="playAgainBtn">ИГРАТЬ ДАЛЬШЕ</button>
+  </div>
+</div>
+
+<div id="gameWrapper"><canvas id="gameCanvas"></canvas></div>
+
+<div id="controls">
+  <div class="throw-info">
+    <span class="throw-count" id="throwCount">1</span>
+    <span>/ 4</span>
+  </div>
+  <button class="rotation-btn active" id="rotInBtn">IN ▶</button>
+  <button class="rotation-btn" id="rotOutBtn">OUT ◀</button>
+  <button class="throw-btn" id="throwBtn">БРОСИТЬ</button>
+</div>
+
+<div id="info"></div>
+
+<div class="answer-panel" id="answerPanel">
+  <h4>Тип дорожки и свалы (в футах, 0–12)</h4>
+  <div class="path-types">
+    <button class="path-btn" data-type="plate">Тарелка</button>
+    <button class="path-btn" data-type="antiplate">Антитарелка</button>
+    <button class="path-btn" data-type="hill_in">Горка (in)</button>
+    <button class="path-btn" data-type="hill_out">Горка (out)</button>
+    <button class="path-btn" data-type="standard">Стандарт</button>
+  </div>
+  <div class="slidings-grid">
+    <div class="sliding-input">
+      <label>In снаружи:</label>
+      <input type="number" id="inOutside" min="0" max="12" step="1" value="0">
+    </div>
+    <div class="sliding-input">
+      <label>Out снаружи:</label>
+      <input type="number" id="outOutside" min="0" max="12" step="1" value="0">
+    </div>
+    <div class="sliding-input">
+      <label>In изнутри:</label>
+      <input type="number" id="inInside" min="0" max="12" step="1" value="0">
+    </div>
+    <div class="sliding-input">
+      <label>Out изнутри:</label>
+      <input type="number" id="outInside" min="0" max="12" step="1" value="0">
+    </div>
+  </div>
+  <button class="check-btn" id="checkBtn">ПРОВЕРИТЬ</button>
+</div>
+
+<script>
+"use strict";
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, D, stoneRadius, dpr, line1Y;
+
+const C2 = 0.66, C3 = 0.33, C4 = 0.083;
+const MARGIN = 0.083;
+const LINE1_RATIO = 0.33;
+
+let currentRotation = 'in';
+let throwsMade = 0;
+const MAX_THROWS = 4;
+let track = null;
+
+let aimFeet = 0;
+let lastShot = null;
+
+const slider = document.getElementById('brushSlider');
+
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function generateTrack() {
+  const typeRoll = Math.random();
+  let type;
+  if (typeRoll < 0.22) type = 'plate';
+  else if (typeRoll < 0.44) type = 'antiplate';
+  else if (typeRoll < 0.60) type = 'hill_in';
+  else if (typeRoll < 0.76) type = 'hill_out';
+  else type = 'standard';
+
+  let inOutside, outOutside, inInside, outInside;
+
+  if (type === 'plate') {
+    // Тарелка: снаружи 8-12, изнутри 0-4
+    const baseOut = randInt(8, 12);
+    const baseIn = randInt(8, 12);
+    inOutside = baseIn + randInt(-1, 1);
+    outOutside = baseOut + randInt(-1, 1);
+    inInside = randInt(0, 4);
+    outInside = randInt(0, 4);
+    inOutside = Math.min(12, Math.max(0, inOutside));
+    outOutside = Math.min(12, Math.max(0, outOutside));
+    inInside = Math.min(12, Math.max(0, inInside));
+    outInside = Math.min(12, Math.max(0, outInside));
+    if (Math.abs(inOutside - outOutside) > 1) {
+      const avg = Math.round((inOutside + outOutside) / 2);
+      inOutside = avg; outOutside = avg;
+    }
+    if (Math.abs(inInside - outInside) > 1) {
+      const avg = Math.round((inInside + outInside) / 2);
+      inInside = avg; outInside = avg;
+    }
+  } else if (type === 'antiplate') {
+    // Антитарелка: снаружи 0-4, изнутри 8-12
+    const baseIn = randInt(8, 12);
+    const baseOut = randInt(8, 12);
+    inInside = baseIn + randInt(-1, 1);
+    outInside = baseOut + randInt(-1, 1);
+    inOutside = randInt(0, 4);
+    outOutside = randInt(0, 4);
+    inInside = Math.min(12, Math.max(0, inInside));
+    outInside = Math.min(12, Math.max(0, outInside));
+    inOutside = Math.min(12, Math.max(0, inOutside));
+    outOutside = Math.min(12, Math.max(0, outOutside));
+    if (Math.abs(inInside - outInside) > 1) {
+      const avg = Math.round((inInside + outInside) / 2);
+      inInside = avg; outInside = avg;
+    }
+    if (Math.abs(inOutside - outOutside) > 1) {
+      const avg = Math.round((inOutside + outOutside) / 2);
+      inOutside = avg; outOutside = avg;
+    }
+  } else if (type === 'hill_in') {
+    // Горка (in): in снаружи 8-12, in изнутри 8-12, out снаружи 0-4, out изнутри 0-4
+    const strongIn = randInt(8, 12);
+    inOutside = strongIn;
+    inInside = strongIn;
+    outOutside = randInt(0, 4);
+    outInside = randInt(0, 4);
+    inOutside = Math.min(12, Math.max(0, inOutside + randInt(-1, 1)));
+    inInside = Math.min(12, Math.max(0, inInside + randInt(-1, 1)));
+    if (Math.abs(inOutside - inInside) > 2) {
+      const avg = Math.round((inOutside + inInside) / 2);
+      inOutside = avg; inInside = avg;
+    }
+    if (Math.abs(outOutside - outInside) > 2) {
+      const avg = Math.round((outOutside + outInside) / 2);
+      outOutside = avg; outInside = avg;
+    }
+  } else if (type === 'hill_out') {
+    // Горка (out): out снаружи 8-12, out изнутри 8-12, in снаружи 0-4, in изнутри 0-4
+    const strongOut = randInt(8, 12);
+    outOutside = strongOut;
+    outInside = strongOut;
+    inOutside = randInt(0, 4);
+    inInside = randInt(0, 4);
+    outOutside = Math.min(12, Math.max(0, outOutside + randInt(-1, 1)));
+    outInside = Math.min(12, Math.max(0, outInside + randInt(-1, 1)));
+    if (Math.abs(outOutside - outInside) > 2) {
+      const avg = Math.round((outOutside + outInside) / 2);
+      outOutside = avg; outInside = avg;
+    }
+    if (Math.abs(inOutside - inInside) > 2) {
+      const avg = Math.round((inOutside + inInside) / 2);
+      inOutside = avg; inInside = avg;
+    }
+  } else {
+    // Стандартная: везде примерно одинаково, разница максимум 1
+    const base = randInt(4, 10);
+    inOutside = base + randInt(-1, 1);
+    outOutside = base + randInt(-1, 1);
+    inInside = base + randInt(-1, 1);
+    outInside = base + randInt(-1, 1);
+    const vals = [inOutside, outOutside, inInside, outInside];
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals);
+    if (maxV - minV > 1) {
+      const avg = Math.round((minV + maxV) / 2);
+      inOutside = avg; outOutside = avg; inInside = avg; outInside = avg;
+    }
+  }
+
+  inOutside = Math.min(12, Math.max(0, inOutside));
+  outOutside = Math.min(12, Math.max(0, outOutside));
+  inInside = Math.min(12, Math.max(0, inInside));
+  outInside = Math.min(12, Math.max(0, outInside));
+
+  return {
+    type,
+    inOutside, outOutside, inInside, outInside,
+    truth: { inOutside, outOutside, inInside, outInside }
+  };
+}
+
+function computeShot() {
+  const cx = centerX();
+  const houseCY = houseCenterY();
+  const pxPerFoot = (D / 2) / 12;
+
+  const absX = Math.abs(aimFeet);
+  const t = absX / 12;
+
+  let svalInside, svalOutside;
+  if (currentRotation === 'in') {
+    svalInside = track.inInside;
+    svalOutside = track.inOutside;
+  } else {
+    svalInside = track.outInside;
+    svalOutside = track.outOutside;
+  }
+  const sval = svalInside + (svalOutside - svalInside) * t;
+
+  const direction = currentRotation === 'in' ? +1 : -1;
+  const finalFeet = aimFeet + sval * direction;
+  const clampedFinal = Math.max(-12, Math.min(12, finalFeet));
+
+  const startX = cx + aimFeet * pxPerFoot;
+  const endX = cx + clampedFinal * pxPerFoot;
+  const y = houseCY;
+
+  return { startX, startY: y, endX, endY: y, finalFeet: clampedFinal, sval, rotation: currentRotation, pxPerFoot };
+}
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  const topBarH = document.querySelector('.top-bar').offsetHeight;
+  const sliderH = document.querySelector('.slider-row').offsetHeight;
+  const controlsH = document.getElementById('controls').offsetHeight;
+  const answerH = document.getElementById('answerPanel').offsetHeight;
+  const infoH = document.getElementById('info').offsetHeight;
+  const pad = 4;
+  const availH = window.innerHeight - topBarH - sliderH - controlsH - answerH - infoH - pad * 2;
+  const availW = window.innerWidth - pad * 2;
+
+  H = availH;
+  W = H / 2;
+  if (W > availW) {
+    W = availW;
+    H = W * 2;
+    if (H > availH) { H = availH; W = H / 2; }
+  }
+
+  canvas.style.width = Math.floor(W) + 'px';
+  canvas.style.height = Math.floor(H) + 'px';
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  D = W / (1 + 2 * MARGIN);
+  stoneRadius = (D * C4 * 0.9277) / 2;
+  line1Y = H - LINE1_RATIO * D;
+}
+
+function centerX() { return W / 2; }
+function houseCenterY() { return MARGIN * D + D / 2; }
+
+function drawHouse() {
+  const cx = centerX(), cy = houseCenterY();
+  const r1 = D / 2, r2 = r1 * C2, r3 = r1 * C3, r4 = r1 * C4;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r1, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r1, 0, Math.PI * 2); ctx.fillStyle = '#1e40af'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r3, 0, Math.PI * 2); ctx.fillStyle = '#b91c1c'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r4, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1.2;
+  [r1, r2, r3, r4].forEach(r => { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); });
+  ctx.restore();
+}
+
+function drawLines() {
+  const cx = centerX(), cy = houseCenterY(), r1 = D / 2;
+  const m = MARGIN * D;
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(m, cy - r1); ctx.lineTo(W - m, cy - r1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(m, cy); ctx.lineTo(W - m, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, m); ctx.lineTo(cx, H - m); ctx.stroke();
+  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(m, line1Y); ctx.lineTo(W - m, line1Y); ctx.stroke();
+}
+
+function drawAim() {
+  const cx = centerX();
+  const houseCY = houseCenterY();
+  const pxPerFoot = (D / 2) / 12;
+  const aimX = cx + aimFeet * pxPerFoot;
+
+  const halfLen = stoneRadius * 1.2;
+
+  ctx.beginPath();
+  ctx.moveTo(aimX, houseCY - halfLen);
+  ctx.lineTo(aimX, houseCY + halfLen);
+  ctx.strokeStyle = '#f97316';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(aimX, houseCY, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#f97316';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function drawLastShot() {
+  if (!lastShot) return;
+  const { startX, endX, endY, rotation } = lastShot;
+  const color = rotation === 'in' ? '#2563eb' : '#dc2626';
+
+  ctx.beginPath();
+  ctx.moveTo(startX, endY);
+  ctx.lineTo(endX, endY);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (Math.abs(endX - startX) > 8) {
+    const dir = endX > startX ? 1 : -1;
+    const arrowX = startX + dir * Math.min(20, Math.abs(endX - startX) / 2);
+    ctx.beginPath();
+    ctx.moveTo(arrowX, endY);
+    ctx.lineTo(arrowX - dir * 6, endY - 4);
+    ctx.lineTo(arrowX - dir * 6, endY + 4);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.arc(endX, endY, stoneRadius * 0.9, 0, Math.PI * 2);
+  ctx.fillStyle = rotation === 'in' ? '#2563eb' : '#dc2626';
+  ctx.fill();
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(endX, endY, stoneRadius * 0.45, 0, Math.PI * 2);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = 'bold 10px system-ui, sans-serif';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.fillText(rotation === 'in' ? 'IN' : 'OUT', endX, endY + stoneRadius + 12);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  drawHouse();
+  drawLines();
+  drawAim();
+  drawLastShot();
+  requestAnimationFrame(draw);
+}
+
+// ==== УПРАВЛЕНИЕ ====
+
+slider.addEventListener('input', () => {
+  aimFeet = parseInt(slider.value);
+});
+
+function setRotation(rot) {
+  currentRotation = rot;
+  document.getElementById('rotInBtn').classList.toggle('active', rot === 'in');
+  document.getElementById('rotOutBtn').classList.toggle('active', rot === 'out');
+}
+
+document.getElementById('rotInBtn').addEventListener('click', () => setRotation('in'));
+document.getElementById('rotOutBtn').addEventListener('click', () => setRotation('out'));
+
+function updateThrowUI() {
+  document.getElementById('throwCount').textContent = Math.min(throwsMade + 1, MAX_THROWS);
+  const throwBtn = document.getElementById('throwBtn');
+  if (throwsMade >= MAX_THROWS) {
+    throwBtn.disabled = true;
+    throwBtn.textContent = 'ВСЕ';
+  } else {
+    throwBtn.disabled = false;
+    throwBtn.textContent = 'БРОСИТЬ';
+  }
+}
+
+document.getElementById('throwBtn').addEventListener('click', () => {
+  if (throwsMade >= MAX_THROWS) return;
+  lastShot = computeShot();
+  throwsMade++;
+  updateThrowUI();
+});
+
+function newTrack() {
+  track = generateTrack();
+  throwsMade = 0;
+  lastShot = null;
+  aimFeet = 0;
+  slider.value = 0;
+  updateThrowUI();
+  document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.sliding-input input').forEach(inp => inp.value = 0);
+  document.getElementById('checkBtn').disabled = false;
+  document.getElementById('resultModal').classList.remove('show');
+}
+
+document.getElementById('refreshBtn').addEventListener('click', newTrack);
+
+// ==== ПРОВЕРКА ====
+
+document.querySelectorAll('.path-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+document.getElementById('checkBtn').addEventListener('click', () => {
+  const selectedTypeBtn = document.querySelector('.path-btn.active');
+  if (!selectedTypeBtn) {
+    alert('Выберите тип дорожки!');
+    return;
+  }
+
+  const selectedType = selectedTypeBtn.dataset.type;
+  const inOutside = parseInt(document.getElementById('inOutside').value) || 0;
+  const outOutside = parseInt(document.getElementById('outOutside').value) || 0;
+  const inInside = parseInt(document.getElementById('inInside').value) || 0;
+  const outInside = parseInt(document.getElementById('outInside').value) || 0;
+
+  const truth = track.truth;
+  let errors = [];
+
+  let typeCorrect = false;
+  if (track.type === 'plate' && selectedType === 'plate') typeCorrect = true;
+  if (track.type === 'antiplate' && selectedType === 'antiplate') typeCorrect = true;
+  if (track.type === 'hill_in' && selectedType === 'hill_in') typeCorrect = true;
+  if (track.type === 'hill_out' && selectedType === 'hill_out') typeCorrect = true;
+  if (track.type === 'standard' && selectedType === 'standard') typeCorrect = true;
+
+  if (!typeCorrect) {
+    errors.push(`Тип неверен (вы: «${getTypeName(selectedType)}»).`);
+  }
+
+  const tol = 1;
+  if (Math.abs(inOutside - truth.inOutside) > tol) {
+    errors.push(`In снаружи: вы ${inOutside}, верно ${truth.inOutside}.`);
+  }
+  if (Math.abs(outOutside - truth.outOutside) > tol) {
+    errors.push(`Out снаружи: вы ${outOutside}, верно ${truth.outOutside}.`);
+  }
+  if (Math.abs(inInside - truth.inInside) > tol) {
+    errors.push(`In изнутри: вы ${inInside}, верно ${truth.inInside}.`);
+  }
+  if (Math.abs(outInside - truth.outInside) > tol) {
+    errors.push(`Out изнутри: вы ${outInside}, верно ${truth.outInside}.`);
+  }
+
+  const verdictEl = document.getElementById('modalVerdict');
+  const errorsEl = document.getElementById('modalErrors');
+
+  if (errors.length === 0) {
+    verdictEl.textContent = '✅ Всё верно!';
+    verdictEl.className = 'verdict correct';
+    errorsEl.style.display = 'none';
+  } else {
+    verdictEl.textContent = '❌ Есть ошибки';
+    verdictEl.className = 'verdict wrong';
+    errorsEl.style.display = 'block';
+    errorsEl.innerHTML = errors.join('<br>');
+  }
+
+  document.getElementById('ansType').textContent = getTypeName(track.type);
+  document.getElementById('ansInOutside').textContent = truth.inOutside;
+  document.getElementById('ansOutOutside').textContent = truth.outOutside;
+  document.getElementById('ansInInside').textContent = truth.inInside;
+  document.getElementById('ansOutInside').textContent = truth.outInside;
+
+  document.getElementById('resultModal').classList.add('show');
+});
+
+document.getElementById('playAgainBtn').addEventListener('click', () => {
+  newTrack();
+});
+
+function getTypeName(type) {
+  const names = {
+    plate: 'Тарелка',
+    antiplate: 'Антитарелка',
+    hill_in: 'Горка (in)',
+    hill_out: 'Горка (out)',
+    standard: 'Стандартная'
+  };
+  return names[type] || type;
+}
+
+// ==== СТАРТ ====
+
+window.addEventListener('resize', resize);
+
+resize();
+track = generateTrack();
+updateThrowUI();
+draw();
+</script>
+</body>
+</html>
